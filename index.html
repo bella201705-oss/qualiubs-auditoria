@@ -1,89 +1,283 @@
-import { useEffect, useState } from 'react';
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QualiUBS</title>
 
-export default function QualiUBS(){
-const eixos=['CCIB','NSP','Gestão do Cuidado','Acolhimento','Jornada do Paciente','Vacina','Curativo','Medicação','Emergência','Expurgo','Esterilização','Laboratório','Odontologia','Farmácia','DML','Políticas','Colaboradores'];
+<script src="https://cdn.tailwindcss.com"></script>
 
-const [abaAtiva,setAbaAtiva]=useState('CCIB')
+</head>
+<body class="bg-gray-100">
 
-const [checklist,setChecklist]=useState(()=>{
-const salvo=localStorage.getItem('qualiubs')
-return salvo?JSON.parse(salvo):[
+<div class="p-6">
+
+<h1 class="text-3xl font-bold mb-5">
+QualiUBS
+</h1>
+
+<div id="abas"
+class="flex overflow-x-auto gap-2 mb-6">
+</div>
+
+<div class="mb-4">
+Score Geral:
+<span id="score">0%</span>
+</div>
+
+<div id="conteudo"></div>
+
+</div>
+
+<script>
+
+const eixos=[
+"CCIB",
+"NSP",
+"Gestão do Cuidado",
+"Acolhimento",
+"Jornada do Paciente",
+"Vacina",
+"Curativo",
+"Medicação",
+"Emergência",
+"Expurgo",
+"Esterilização",
+"Laboratório",
+"Odontologia",
+"Farmácia",
+"DML",
+"Políticas",
+"Colaboradores"
+]
+
+let abaAtiva="CCIB"
+
+let checklist=JSON.parse(
+localStorage.getItem("qualiubs")
+)||[
 {
-id:crypto.randomUUID(),
-eixo:'CCIB',
-requisito:'Possui POP atualizado?',
+id:1,
+eixo:"CCIB",
+requisito:"Possui POP atualizado?",
 classificacao:null,
-observacao:'',
-evidencia:[],
+observacao:"",
 pontuacao:0
 }
 ]
-})
 
-useEffect(()=>{
-localStorage.setItem('qualiubs',JSON.stringify(checklist))
-},[checklist])
+function calcular(status){
 
-function calcularPontuacao(status){
-if(status==='C') return 1
-if(status==='PC') return .5
+if(status==="C") return 1
+
+if(status==="PC") return .5
+
 return 0
+
 }
 
 function selecionar(id,status){
-setChecklist(prev=>prev.map(item=>{
+
+checklist=checklist.map(item=>{
+
 if(item.id!==id) return item
 
 let observacao=item.observacao
 
-if(status==='PC'||status==='NC'){
-observacao=window.prompt('Observação obrigatória')||''
+if(
+status==="PC" ||
+status==="NC"
+){
+
+observacao=prompt(
+"Observação obrigatória:"
+)
+
 if(!observacao){
-alert('Preenchimento obrigatório')
+
+alert(
+"Observação obrigatória"
+)
+
 return item
+
 }
+
 }
 
 return{
 ...item,
 classificacao:status,
 observacao,
-pontuacao:calcularPontuacao(status)
-}
-}))
+pontuacao:calcular(status)
 }
 
-const itensFiltrados=checklist.filter(x=>x.eixo===abaAtiva)
-const score=(checklist.reduce((a,b)=>a+b.pontuacao,0)/checklist.length)*100
+})
 
-return(
-<div className='p-6'>
-<h1 className='text-3xl font-bold mb-4'>QualiUBS</h1>
+salvar()
 
-<div className='flex overflow-x-auto gap-2 mb-5'>
-{eixos.map(e=>(
-<button
-key={e}
-onClick={()=>setAbaAtiva(e)}
-className={`px-4 py-2 rounded-2xl border ${abaAtiva===e?'bg-black text-white':''}`}>
-{e}
-</button>
-))}
-</div>
+render()
 
-<div className='mb-4'>Score Geral: {score.toFixed(0)}%</div>
+}
 
-{itensFiltrados.map(item=>(
-<div key={item.id} className='border rounded-2xl p-4 mb-4'>
-<h3>{item.requisito}</h3>
-<div className='flex gap-2 mt-3'>
-<button onClick={()=>selecionar(item.id,'C')} className='bg-green-500 text-white px-3 py-2 rounded-xl'>✔ Conforme</button>
-<button onClick={()=>selecionar(item.id,'PC')} className='bg-yellow-400 px-3 py-2 rounded-xl'>⚠ Parcial</button>
-<button onClick={()=>selecionar(item.id,'NC')} className='bg-red-500 text-white px-3 py-2 rounded-xl'>✖ Não conforme</button>
-</div>
-{item.observacao && <p className='mt-3'><b>Observação:</b> {item.observacao}</p>}
-</div>
-))}
-</div>
+function salvar(){
+
+localStorage.setItem(
+"qualiubs",
+JSON.stringify(checklist)
 )
+
 }
+
+function renderAbas(){
+
+const div=
+document.getElementById(
+"abas"
+)
+
+div.innerHTML=""
+
+eixos.forEach(e=>{
+
+div.innerHTML+=`
+
+<button
+onclick="trocarAba('${e}')"
+class="px-4 py-2 rounded-xl border
+${abaAtiva===e?
+'bg-black text-white':''}
+">
+
+${e}
+
+</button>
+
+`
+
+})
+
+}
+
+function trocarAba(e){
+
+abaAtiva=e
+
+render()
+
+}
+
+function render(){
+
+renderAbas()
+
+const conteudo=
+document.getElementById(
+"conteudo"
+)
+
+const score=
+(
+checklist.reduce(
+(a,b)=>a+b.pontuacao,
+0
+)
+/
+checklist.length
+)*100
+
+document.getElementById(
+"score"
+).innerText=
+score.toFixed(0)+"%"
+
+conteudo.innerHTML=""
+
+checklist
+.filter(
+x=>x.eixo===abaAtiva
+)
+.forEach(item=>{
+
+conteudo.innerHTML+=`
+
+<div class="
+bg-white
+p-4
+rounded-xl
+shadow
+mb-4">
+
+<h3 class="font-bold">
+${item.requisito}
+</h3>
+
+<div class="
+flex gap-2 mt-3">
+
+<button
+onclick="selecionar(${item.id},'C')"
+class="
+bg-green-500
+text-white
+px-3
+py-2
+rounded">
+
+✔ Conforme
+
+</button>
+
+<button
+onclick="selecionar(${item.id},'PC')"
+class="
+bg-yellow-400
+px-3
+py-2
+rounded">
+
+⚠ Parcial
+
+</button>
+
+<button
+onclick="selecionar(${item.id},'NC')"
+class="
+bg-red-500
+text-white
+px-3
+py-2
+rounded">
+
+✖ Não Conforme
+
+</button>
+
+</div>
+
+${
+item.observacao?
+
+`<p class='mt-3'>
+<b>Observação:</b>
+${item.observacao}
+</p>`
+
+:''
+
+}
+
+</div>
+
+`
+
+})
+
+}
+
+render()
+
+</script>
+
+</body>
+</html>

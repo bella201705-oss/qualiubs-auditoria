@@ -5,163 +5,130 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>QualiUBS</title>
 
-<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body{
+font-family:Arial;
+padding:20px;
+background:#f2f2f2;
+}
+.botao{
+padding:10px;
+border:none;
+border-radius:8px;
+cursor:pointer;
+margin:4px;
+}
+.verde{background:green;color:white}
+.amarelo{background:gold}
+.vermelho{background:red;color:white}
+.aba{
+padding:8px;
+margin:4px;
+cursor:pointer;
+}
+</style>
 
 </head>
-<body class="bg-gray-100">
 
-<div class="p-6">
+<body>
 
-<h1 class="text-3xl font-bold mb-5">
-QualiUBS
-</h1>
+<h1>QualiUBS</h1>
 
-<div id="abas"
-class="flex overflow-x-auto gap-2 mb-6">
-</div>
+<div id="abas"></div>
 
-<div class="mb-4">
-Score Geral:
+<p>
+Score:
 <span id="score">0%</span>
-</div>
+</p>
 
 <div id="conteudo"></div>
 
-</div>
-
 <script>
 
-const eixos=[
-"CCIB",
-"NSP",
-"Gestão do Cuidado",
-"Acolhimento",
-"Jornada do Paciente",
-"Vacina",
-"Curativo",
-"Medicação",
-"Emergência",
-"Expurgo",
-"Esterilização",
-"Laboratório",
-"Odontologia",
-"Farmácia",
-"DML",
-"Políticas",
-"Colaboradores"
-]
+const eixos=["CCIB","NSP","Farmácia"]
 
-let abaAtiva="CCIB"
+let aba="CCIB"
 
-let checklist=JSON.parse(
-localStorage.getItem("qualiubs")
-)||[
+let checklist=[
 {
 id:1,
 eixo:"CCIB",
 requisito:"Possui POP atualizado?",
-classificacao:null,
 observacao:"",
 pontuacao:0
 }
 ]
 
-function calcular(status){
+function desenharAbas(){
 
-if(status==="C") return 1
+let html=""
 
-if(status==="PC") return .5
+eixos.forEach(e=>{
 
-return 0
-
-}
-
-function selecionar(id,status){
-
-checklist=checklist.map(item=>{
-
-if(item.id!==id) return item
-
-let observacao=item.observacao
-
-if(
-status==="PC" ||
-status==="NC"
-){
-
-observacao=prompt(
-"Observação obrigatória:"
-)
-
-if(!observacao){
-
-alert(
-"Observação obrigatória"
-)
-
-return item
-
-}
-
-}
-
-return{
-...item,
-classificacao:status,
-observacao,
-pontuacao:calcular(status)
-}
+html+=`
+<button
+class="aba"
+onclick="trocar('${e}')"
+>
+${e}
+</button>
+`
 
 })
 
-salvar()
+document
+.getElementById("abas")
+.innerHTML=html
+
+}
+
+function trocar(nome){
+
+aba=nome
 
 render()
 
 }
 
-function salvar(){
+function selecionar(id,tipo){
 
-localStorage.setItem(
-"qualiubs",
-JSON.stringify(checklist)
+let item=
+checklist.find(
+x=>x.id===id
 )
+
+if(
+tipo==="PC" ||
+tipo==="NC"
+){
+
+let obs=
+prompt(
+"Digite observação"
+)
+
+if(!obs){
+
+alert(
+"Obrigatório"
+)
+
+return
 
 }
 
-function renderAbas(){
-
-const div=
-document.getElementById(
-"abas"
-)
-
-div.innerHTML=""
-
-eixos.forEach(e=>{
-
-div.innerHTML+=`
-
-<button
-onclick="trocarAba('${e}')"
-class="px-4 py-2 rounded-xl border
-${abaAtiva===e?
-'bg-black text-white':''}
-">
-
-${e}
-
-</button>
-
-`
-
-})
+item.observacao=obs
 
 }
 
-function trocarAba(e){
+if(tipo==="C")
+item.pontuacao=1
 
-abaAtiva=e
+if(tipo==="PC")
+item.pontuacao=.5
+
+if(tipo==="NC")
+item.pontuacao=0
 
 render()
 
@@ -169,109 +136,81 @@ render()
 
 function render(){
 
-renderAbas()
+desenharAbas()
 
-const conteudo=
-document.getElementById(
-"conteudo"
-)
-
-const score=
-(
-checklist.reduce(
-(a,b)=>a+b.pontuacao,
-0
-)
-/
-checklist.length
-)*100
-
-document.getElementById(
-"score"
-).innerText=
-score.toFixed(0)+"%"
-
-conteudo.innerHTML=""
+let html=""
 
 checklist
 .filter(
-x=>x.eixo===abaAtiva
+x=>x.eixo===aba
 )
 .forEach(item=>{
 
-conteudo.innerHTML+=`
+html+=`
 
-<div class="
-bg-white
-p-4
-rounded-xl
-shadow
-mb-4">
+<div style="
+background:white;
+padding:15px;
+margin-top:10px;
+border-radius:10px">
 
-<h3 class="font-bold">
+<h3>
 ${item.requisito}
 </h3>
 
-<div class="
-flex gap-2 mt-3">
-
 <button
-onclick="selecionar(${item.id},'C')"
 class="
-bg-green-500
-text-white
-px-3
-py-2
-rounded">
-
+botao verde"
+onclick="
+selecionar(${item.id},'C')
+">
 ✔ Conforme
-
 </button>
 
 <button
-onclick="selecionar(${item.id},'PC')"
 class="
-bg-yellow-400
-px-3
-py-2
-rounded">
-
+botao amarelo"
+onclick="
+selecionar(${item.id},'PC')
+">
 ⚠ Parcial
-
 </button>
 
 <button
-onclick="selecionar(${item.id},'NC')"
 class="
-bg-red-500
-text-white
-px-3
-py-2
-rounded">
-
+botao vermelho"
+onclick="
+selecionar(${item.id},'NC')
+">
 ✖ Não Conforme
-
 </button>
 
-</div>
-
-${
-item.observacao?
-
-`<p class='mt-3'>
-<b>Observação:</b>
+<p>
 ${item.observacao}
-</p>`
-
-:''
-
-}
+</p>
 
 </div>
-
 `
-
 })
+
+document
+.getElementById(
+"conteudo"
+)
+.innerHTML=html
+
+let score=
+(checklist.reduce(
+(a,b)=>a+b.pontuacao,
+0
+)/checklist.length)*100
+
+document
+.getElementById(
+"score"
+)
+.innerText=
+score.toFixed(0)+"%"
 
 }
 

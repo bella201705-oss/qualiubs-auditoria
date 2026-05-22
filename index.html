@@ -504,6 +504,7 @@
             // Carregar dashboard inicial
             atualizarDashboard();
             atualizarFiltrosRelatorios();
+            mostrarTela('telaDashboard');
         });
 
 
@@ -838,13 +839,4 @@
                     const perc = Math.round((pontosEixo / totalEixo) * 100);
                     porEixo[eixo] = porEixo[eixo] || { soma: 0, qtd: 0 };
                     porEixo[eixo].soma += perc;
-                    porEixo[eixo].qtd += 1;
-                });
-
-                // Agrupar por unidade
-                porUnidade[aud.unidade] = porUnidade[aud.unidade] || { soma: 0, qtd: 0 };
-                porUnidade[aud.unidade].soma += aud.pontuacaoGeral;
-                porUnidade[aud.unidade].qtd += 1;
-
-                // Evolução mensal
-                const mes = aud.data.substring(0, 7
+                    porE

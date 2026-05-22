@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QualiUBS - Auditoria da Qualidade em Saúde</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        conforme: '#22c55e',
+                        parcial: '#eab308',
+                        naoconforme: '#ef4444',
+                        primary: '#0f766e',
+                        secondary: '#0d9488',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .scrollbar-hide {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+            }
+            .scrollbar-hide::-webkit-scrollbar {
+                display: none;
+            }
+            .btn-option {
+                @apply px-3 py-2 rounded-lg font-medium transition-all duration-200 border-2;
+            }
+            .btn-option-active {
+                @apply border-black/20 shadow-md scale-[1.03];
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans text-gray-800 min-h-screen">
+    <!-- Cabeçalho -->
+    <header class="bg-primary text-white shadow-md sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <i class="fa fa-stethoscope text-xl"></i>
+                <h1 class="text-lg font-bold">QualiUBS - Auditoria da Qualidade</h1>
+            </div>
+            <div class="hidden md:flex gap-4">
+                <button id="btnDashboard" class="hover:bg-white/10 px-3 py-2 rounded-md transition">
+                    <i class="fa fa-chart-bar mr-1"></i> Dashboard
+                </button>
+                <button id="btnNovaAuditoria" class="hover:bg-white/10 px-3 py-2 rounded-md transition">
+                    <i class="fa fa-plus-circle mr-1"></i> Nova Auditoria
+                </button>
+                <button id="btnRelatorios" class="hover:bg-white/10 px-3 py-2 rounded-md transition">
+                    <i class="fa fa-file-pdf-o mr-1"></i> Relatórios
+                </button>
+            </div>
+            <button class="md:hidden text-xl" id="menuToggle">
+                <i class="fa fa-bars"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Menu Mobile -->
+    <div id="menuMobile" class="fixed inset-0 bg-black/50 z-40 hidden">
+        <div class="bg-white h-full w-4/5 max-w-xs p-4 shadow-lg transform transition-transform">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="font-bold text-lg">Menu</h3>
+                <button id="closeMenu" class="text-gray-500">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+            <nav class="flex flex-col gap-2">
+                <button class="menu-item w-full text-left px-3 py-2 rounded-md hover:bg-primary/10" data-target="dashboard">
+                    <i class="fa fa-chart-bar mr-2"></i> Dashboard
+                </button>
+                <button class="menu-item w-full text-left px-3 py-2 rounded-md hover:bg-primary/10" data-target="novaAuditoria">
+                    <i class="fa fa-plus-circle mr-2"></i> Nova Auditoria
+                </button>
+                <button class="menu-item w-full text-left px-3 py-2 rounded-md hover:bg-primary/10" data-target="checklist">
+                    <i class="fa fa-list-check mr-2"></i> Checklist
+                </button>
+                <button class="menu-item w-full text-left px-3 py-2 rounded-md hover:bg-primary/10" data-target="planoAcao">
+                    <i class="fa fa-tasks mr-2"></i> Plano de Ação
+                </button>
+                <button class="menu-item w-full text-left px-3 py-2 rounded-md hover:bg-primary/10" data-target="relatorios">
+                    <i class="fa fa-file-pdf-o mr-2"></i> Relatórios
+                </button>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Conteúdo Principal -->
+    <main class="container mx-auto px-4 py-6 pb-20">
+
+        <!-- Tela: Dashboard -->
+        <section id="telaDashboard" class="hidden">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800">Dashboard Gerencial</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <div class="bg-white rounded-xl shadow p-5 border-l-4 border-conforme">
+                    <p class="text-sm text-gray-500">Média Geral de Conformidade</p>
+                    <h3 class="text-3xl font-bold text-conforme" id="mediaGeral">0%</h3>
+                </div>
+                <div class="bg-white rounded-xl shadow p-5 border-l-4 border-primary">
+                    <p class="text-sm text-gray-500">Total de Auditorias</p>
+                    <h3 class="text-3xl font-bold text-primary" id="totalAuditorias">0</h3>
+                </div>
+                <div class="bg-white rounded-xl shadow p-5 border-l-4 border-parcial">
+                    <p class="text-sm text-gray-500">Itens Parcialmente Conformes</p>
+                    <h3 class="text-3xl font-bold text-parcial" id="totalPC">0</h3>
+                </div>
+                <div class="bg-white rounded-xl shadow p-5 border-l-4 border-naoconforme">
+                    <p class="text-sm text-gray-500">Não Conformidades</p>
+                    <h3 class="text-3xl font-bold text-naoconforme" id="totalNC">0</h3>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div class="bg-white rounded-xl shadow p-5">
+                    <h3 class="font-bold text-lg mb-3">Conformidade por Eixo</h3>
+                    <div class="h-[300px]">
+                        <canvas id="graficoEixos"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow p-5">
+                    <h3 class="font-bold text-lg mb-3">Evolução Mensal</h3>
+                    <div class="h-[300px]">
+                        <canvas id="graficoEvolucao"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white rounded-xl shadow p-5">
+                    <h3 class="font-bold text-lg mb-3">Ranking de Unidades</h3>
+                    <div class="space-y-3" id="rankingUnidades">
+                        <p class="text-gray-500 text-center py-4">Nenhuma auditoria realizada ainda</p>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow p-5">
+                    <h3 class="font-bold text-lg mb-3">Falhas Recorrentes</h3>
+                    <div class="space-y-3" id="falhasRecorrentes">
+                        <p class="text-gray-500 text-center py-4">Sem dados para análise</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tela: Nova Auditoria -->
+        <section id="telaNovaAuditoria" class="hidden">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800">Dados da Auditoria</h2>
+            
+            <div class="bg-white rounded-xl shadow p-6 mb-6">
+                <form id="formAuditoria" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Unidade de Saúde *</label>
+                        <input type="text" id="unidadeNome" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Data *</label>
+                        <input type="date" id="auditoriaData" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Auditor Responsável *</label>
+                        <input type="text" id="auditorNome" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Auditoria *</label>
+                        <select id="auditoriaTipo" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition" required>
+                            <option value="">Selecione...</option>
+                            <option value="Rotina">Rotina</option>
+                            <option value="Supervisão">Supervisão</option>
+                            <option value="Retorno">Retorno</option>
+                            <option value="Obra">Obra</option>
+                            <option value="Outra">Outra</option>
+                        </select>
+                    </div>
+
+                    <div class="md:col-span-2 mt-2">
+                        <button type="submit" class="w-full bg-primary hover:bg-primary/90 text-white font-medium py-3 px-4 rounded-lg transition shadow-md">
+                            Iniciar Checklist
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- Tela: Checklist -->
+        <section id="telaChecklist" class="hidden">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold text-gray-800" id="tituloAuditoria">Checklist de Auditoria</h2>
+                <span class="text-sm font-medium bg-primary/10 text-primary px-3 py-1 rounded-full" id="statusAuditoria">Em andamento</span>
+            </div>
+
+            <!-- Navegação entre Eixos -->
+            <div class="bg-white rounded-xl shadow mb-6 overflow-hidden">
+                <div class="flex overflow-x-auto scrollbar-hide border-b">
+                    <button class="eixo-tab active px-4 py-3 font-medium text-primary border-b-2 border-primary whitespace-nowrap" data-eixo="CCIB">CCIB</button>
+                    <button class="eixo-tab px-4 py-3 font-medium text-gray-600 hover:bg-gray-50 whitespace-nowrap" data-eixo="NSP">NSP</button>
+                    <button class="eixo-tab px-4 py-3 font-medium text-gray-600 hover:bg-gray-50 whitespace-nowrap" data-eixo="GestaoCuidado">Gestão do Cuidado</button>
+                    <button class="eixo-tab px-4 py-3 font-medium text-gray-600 hover:bg-gray-50 whitespace-nowrap" data-eixo="Acolhimento">Acolhimento</button>
+                    <button class="eixo-tab px-4 py-3 font-medium text-gray-600 hover:bg-gray-50 whitespace-nowrap" data-eixo="JornadaPaciente">Jornada do Paciente</button>
+                    <button class="eixo-tab px-4 py-3 font-medium text-gray-600 hover:bg-gray-50 whitespace-nowrap" data-eixo="Vacina">Vacina</button>
+                    <button class="eixo-tab px-4 py-3 font-medium text-gray-600 hover:bg-gray-50 whitespace-nowrap" data-eixo="Curativo">Curativo</button>
+                    <button class="eixo-tab px-4 py-3 font-medium text-gray-600 hover:bg-gray-50 whitespace-nowrap" data-eixo="Medicacao">Medicação</button>
+                    <button class="eixo-tab px-4 py-3 font-medium text-gray-600 hover:bg-gray-50 whitespace-nowrap" data-eixo="Emergencia">Emergência</button>
+                    <button class="eixo-tab px-4 py-3 font-medium text-gray-600 hover:bg-gray-50 whitespace-nowrap" data-eixo="Expurgo">Expurgo</button>
+                    <button class="eixo-tab px-4 py-3 font-medium text-gray-600 hover:bg-gray-50 whitespace-nowrap" data-eixo="Esterilizacao">Esterilização</button>
+                    <button class="eixo-tab px-4 py-3 font-medium text-gray-600 hover:bg-gray-50 whitespace-nowrap" data-eixo="Laboratorio">Laboratório</button>
+                    <button class="eixo-tab px-4 py-3 font-medium text-gray-600 hover:bg-gray-50 whitespace-nowrap" data-eixo="Odontologia">Odontologia</button>
+                    <button class="eixo-tab px-4 py-3 font-medium text-gray-600 hover:bg-gray-50 whitespace-nowrap" data-eixo="Farmacia">Farmácia</button>
+                    <button class="eixo-tab px-4 py-3 font-medium text-gray-600 hover:bg-gray-50 whitespace-nowrap" data-eixo="DML">DML</button>
+                    <button class="eixo-tab px-4 py-3 font-medium text-gray-600 hover:bg-gray-50 whitespace-nowrap" data-eixo="Politicas">Políticas</button>
+                    <button class="eixo-tab px-4 py-3 font-medium text-gray-600 hover:bg-gray-50 whitespace-nowrap" data-eixo="Colaboradores">Colaboradores</button>
+                </div>
+
+                <!-- Conteúdo do Eixo -->
+                <div class="p-5" id="conteudoEixo">
+                </div>
+
+                <!-- Pontuação do Eixo -->
+                <div class="bg-gray-50 px-5 py-3 border-t flex justify-between items-center">
+                    <span class="font-medium">Pontuação do eixo:</span>
+                    <span class="font-bold text-lg text-primary" id="pontuacaoEixo">0 / 0 (0%)</span>
+                </div>
+            </div>
+
+            <!-- Ações Finais -->
+            <div class="flex flex-col md:flex-row gap-3 justify-end">
+                <button id="btnPlanoAcaoRapido" class="px-5 py-2 bg-secondary/10 text-secondary font-medium rounded-lg hover:bg-secondary/20 transition">
+                    Ver Plano de Ação
+                </button>
+                <button id="btnFinalizarAuditoria" class="px-5 py-2 bg-conforme text-white font-medium rounded-lg hover:bg-conforme/90 shadow-md transition">
+                    Finalizar Auditoria
+                </button>
+            </div>
+        </section>
+
+        <!-- Tela: Plano de Ação -->
+        <section id="telaPlanoAcao" class="hidden">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800">Plano de Ação Automático</h2>
+            
+            <div class="bg-white rounded-xl shadow p-6 mb-6">
+                <div class="mb-4 p-3 bg-yellow-50 border border-yellow-100 rounded-lg text-yellow-800 text-sm">
+                    <i class="fa fa-info-circle mr-2"></i>
+                    Lista gerada automaticamente com todos os itens classificados como Parcialmente Conforme ou Não Conforme.
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[800px]">
+                        <thead>
+                            <tr class="border-b-2 border-gray-200">
+                                <th class="text-left py-3 px-2 font-semibold text-gray-700">Eixo</th>
+                                <th class="text-left py-3 px-2 font-semibold text-gray-700">Requisito</th>
+                                <th class="text-left py-3 px-2 font-semibold text-gray-700">Classificação</th>
+                                <th class="text-left py-3 px-2 font-semibold text-gray-700">Ação Corretiva</th>
+                                <th class="text-left py-3 px-2 font-semibold text-gray-700">Responsável</th>
+                                <th class="text-left py-3 px-2 font-semibold text-gray-700">Prazo</th>
+                                <th class="text-left py-3 px-2 font-semibold text-gray-700">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaPlanoAcao">
+                            <tr>
+                                <td colspan="7" class="py-4 px-2 text-center text-gray-500">Nenhuma não conformidade encontrada</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="flex justify-end">
+                <button id="btnGerarPDF" class="px-6 py-3 bg-primary text-white font-medium rounded-lg shadow-md hover:bg-primary/90 transition">
+                    <i class="fa fa-file-pdf-o mr-2"></i> Gerar Relatório PDF
+                </button>
+            </div>
+        </section>
+
+        <!-- Tela: Relatórios -->
+        <section id="telaRelatorios" class="hidden">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800">Relatórios e Comparativos</h2>
+            
+            <div class="bg-white rounded-xl shadow p-6 mb-6">
+                <h3 class="font-bold text-lg mb-4">Filtros Dinâmicos</h3>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Unidade</label>
+                        <select id="filtroUnidade" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                            <option value="todas">Todas</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Eixo</label>
+                        <select id="filtroEixo" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                            <option value="todos">Todos</option>
+                            <option value="CCIB">CCIB</option>
+                            <option value="NSP">NSP</option>
+                            <option value="GestaoCuidado">Gestão do Cuidado</option>
+                            <option value="Acolhimento">Acolhimento</option>
+                            <option value="Vacina">Vacina</option>
+                            <option value="Farmacia">Farmácia</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Período</label>
+                        <input type="month" id="filtroPeriodo" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                        <select id="filtroTipo" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                            <option value="todos">Todos</option>
+                            <option value="Rotina">Rotina</option>
+                            <option value="Supervisão">Supervisão</option>
+                            <option value="Retorno">Retorno</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 mb-6">
+                    <button id="btnCompararUnidades" class="px-4 py-2 bg-secondary text-white rounded-lg hover:bg-secondary/90 transition">
+                        Comparar Unidades
+                    </button>
+                    <button id="btnCompararPeriodos" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition">
+                        Comparar Auditorias
+                    </button>
+                </div>
+
+                <div id="areaResultadosRelatorio" class="mt-6">
+                    <p class="text-gray-500 text-center py-6">Selecione os filtros e escolha uma comparação</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal de Observação -->
+    <div id="modalObservacao" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-xl w-full max-w-md p-5 shadow-2xl transform transition-all">
+            <h3 class="font-bold text-lg mb-3">Observação Obrigatória</h3>
+            <p class="text-sm text-gray-600 mb-3">Você classificou este item como Parcialmente Conforme ou Não Conforme. Por favor, justifique:</p>
+            
+            <textarea id="textoObservacao" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-primary/50" placeholder="Descreva aqui o motivo, detalhes ou situação encontrada..."></textarea>
+            
+            <div class="flex gap-2 justify-end">
+                <button id="cancelarObservacao" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition">Cancelar</button>
+                <button id="salvarObservacao" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Principal -->
+    <script>
+        // Dados dos Checklists - Estrutura completa conforme requisitos
+        const checklistEixos = {
+            CCIB: [
+                { id: 1, requisito: "Existe comissão formalmente instituída com ata de criação e portaria", peso: 1 },
+                { id: 2, requisito: "Realiza reuniões periódicas com registro em ata", peso: 1 },
+                { id: 3, requisito: "Possui protocolo de limpeza, desinfecção e esterilização atualizado", peso: 1 },
+                { id: 4, requisito: "Monitora taxas de infecção e envia relatórios regularmente", peso: 1 },
+                { id: 5, requisito: "Realiza capacitações periódicas com a equipe", peso: 1 }
+            ],
+            NSP: [
+                { id: 6, requisito: "Núcleo de Segurança do Paciente estruturado e atuante", peso: 1 },
+                { id: 7, requisito: "Possui protocolo de notificação de eventos adversos", peso: 1 },
+                { id: 8, requisito: "Utiliza ferramentas de segurança (lista de verificação, dupla checagem)", peso: 1 },
+                { id: 9, requisito: "Identifica corretamente o paciente em todos os atendimentos", peso: 1 },
+                { id: 10, requisito: "Realiza análise crítica dos eventos notificados", peso: 1 }
+            ],
+            GestaoCuidado: [
+                { id: 11, requisito: "Prontuário eletrônico ou físico organizado e completo", peso: 1 },
+                { id: 12, requisito: "Plano de cuidado individualizado para pacientes crônicos", peso: 1 },
+                { id: 13, requisito: "Acompanhamento regular de condições de saúde prioritárias", peso: 1 },
+                { id: 14, requisito: "Referência e contrarreferência estruturada com outros serviços", peso: 1 }
+            ],
+            Acolhimento: [
+                { id: 15, requisito: "Espaço físico adequado e acessível para espera", peso: 1 },
+                { id: 16, requisito: "Classificação de risco realizada conforme protocolo", peso: 1 },
+                { id: 17, requisito: "Atendimento humanizado e sem discriminação", peso: 1 },
+                { id: 18, requisito: "Tempo de espera compatível com o risco do paciente", peso: 1 }
+            ],
+            JornadaPaciente: [
+                { id: 19, requisito: "Fluxo de atendimento claro e visível para o usuário", peso: 1 },
+                { id: 20, requisito: "Transição de cuidado segura entre equipes e turnos", peso: 1 },
+                { id: 21, requisito: "Instruções claras fornecidas na alta ou encaminhamento", peso: 1 }
+            ],
+            Vacina: [
+                { id: 22, requisito: "Cadeia de frio controlada com registros de temperatura diários", peso: 1 },
+                { id: 23, requisito: "Calendário vacinal atualizado e seguido corretamente", peso: 1 },
+                { id: 24, requisito: "Registro de vacinação no sistema oficial e cartão do usuário", peso: 1 },
+                { id: 25, requisito: "Descarte correto de vacinas vencidas ou danificadas", peso: 1 }
+            ],
+            Curativo: [
+                { id: 26, requisito: "Material estéril e armazenado corretamente", peso: 1 },
+                { id: 27, requisito: "Técnica asséptica rigorosamente seguida", peso: 1 },
+                { id: 28, requisito: "Registro detalhado do curativo e evolução da lesão", peso: 1 }
+            ],
+            Medicacao: [
+                { id: 29, requisito: "Prescrição legível, completa e assinada", peso: 1 },
+                { id: 30, requisito: "Conferência da medicação antes da administração", peso: 1 },
+                { id: 31, requisito: "Armazenamento adequado, separado por classe e prazo de validade", peso: 1 },
+                { id: 32, requisito: "Controle de medicamentos controlados com livro de registro", peso: 1 }
+            ],
+            Emergencia: [
+                { id: 33, requisito: "Carro de emergência completo, organizado e com validades atualizadas", peso: 1 },
+                { id: 34, requisito: "Equipe capacitada em suporte básico de vida", peso: 1 },
+                { id: 35, requisito: "Fluxo de atendimento a emergências definido e conhecido", peso: 1 }
+            ],
+            Expurgo: [
+                { id: 36, requisito: "Recipientes adequados e identificados para cada tipo de resíduo", peso: 1 },
+                { id: 37, requisito: "Coleta e armazenamento temporário conforme legislação", peso: 1 },
+                { id: 38, requisito: "Equipamentos de proteção individual disponíveis e utilizados", peso: 1 }
+            ],
+            Esterilizacao: [
+                { id: 39, requisito: "Processos de limpeza, preparo e esterilização documentados", peso: 1 },
+                { id: 40, requisito: "Controles biológicos e químicos realizados e registrados", peso: 1 },
+                { id: 41, requisito: "Armazenamento de materiais esterilizados protegido e com validade", peso: 1 }
+            ],
+            Laboratorio: [
+                { id: 42, requisito: "Coleta de amostras com técnica correta e identificação rigorosa", peso: 1 },
+                { id: 43, requisito: "Transporte e armazenamento de amostras conforme normas técnicas", peso: 1 },
+                { id: 44, requisito: "Controle de qualidade interno e externo dos exames", peso: 1 }
+            ],
+            Odontologia: [
+                { id: 45, requisito: "Biossegurança rigorosa em todos os procedimentos", peso: 1 },
+                { id: 46, requisito: "Equipamentos odontológicos calibrados e conservados", peso: 1 },
+                { id: 47, requisito: "Prontuário odontológico completo e integrado", peso: 1 }
+            ],
+            Farmacia: [
+                { id: 48, requisito: "Controle de estoque com organização física e controle de validade", peso: 1 },
+                { id: 49, requisito: "Dispensação realizada por profissional habilitado", peso: 1 },
+                { id: 50, requisito: "Farmacovigilância implementada e registrada", peso: 1 },
+                { id: 51, requisito: "Ambiente adequado para armazenamento (temperatura, umidade, luz)", peso: 1 }
+            ],
+            DML: [
+                { id: 52, requisito: "Produtos de limpeza armazenados separados de materiais de saúde", peso: 1 },
+                { id: 53, requisito: "Registro de controle de pragas e limpeza periódica", peso: 1 }
+            ],
+            Politicas: [
+                { id: 54, requisito: "Política Nacional de Humanização aplicada e difundida", peso: 1 },
+                { id: 55, requisito: "Protocolos clínicos e assistenciais atualizados e acessíveis", peso: 1 },
+                { id: 56, requisito: "Planejamento anual de ações de saúde elaborado e executado", peso: 1 }
+            ],
+            Colaboradores: [
+                { id: 57, requisito: "Registro funcional completo e regularizado", peso: 1 },
+                { id: 58, requisito: "Programa de capacitação continuada implementado", peso: 1 },
+                { id: 59, requisito: "Condições adequadas de trabalho, segurança e saúde ocupacional", peso: 1 }
+            ]
+        };
+
+        // Estado Global
+        let auditoriaAtual = {
+            id: Date.now(),
+            unidade: "",
+            data: "",
+            auditor: "",
+            tipo: "",
+            status: "Em andamento",
+            respostas: {},
+            planoAcao: [],
+            pontuacaoGeral: 0
+        };
+
+        let itemAtualParaObservacao = null;
+        let charts = {};
+
+        // Elementos DOM
+        document.addEventListener('DOMContentLoaded', function() {
+            // Navegação
+            setupNavegacao();
+            
+            // Formulário de auditoria
+            document.getElementById('formAuditoria').addEventListener('submit', iniciarChecklist);
+            
+            // Abas de eixos
+            document.querySelectorAll('.eixo-tab').forEach(tab => {
+                tab.addEventListener('click', () => carregarEixo(tab.dataset.eixo));
+            });
+
+            // Modal observação
+            document.getElementById('salvarObservacao').addEventListener('click', salvarObservacao);
+            document.getElementById('cancelarObservacao').addEventListener('click', fecharModal);
+            
+            // Ações finais
+            document.getElementById('btnFinalizarAuditoria').addEventListener('click', finalizarAuditoria);
+            document.getElementById('btnPlanoAcaoRapido').addEventListener('click', () => mostrarTela('telaPlanoAcao'));
+            document.getElementById('btnGerarPDF').addEventListener('click', gerarRelatorioPDF);
+
+            // Carregar dashboard inicial
+            atualizarDashboard();
+            atualizarFiltrosRelatorios();
+        });
+
+
+        function setupNavegacao() {
+            // Menu mobile
+            document.getElementById('menuToggle').addEventListener('click', () => {
+                document.getElementById('menuMobile').classList.remove('hidden');
+            });
+            document.getElementById('closeMenu').addEventListener('click', () => {
+                document.getElementById('menuMobile').classList.add('hidden');
+            });
+            document.querySelectorAll('.menu-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    mostrarTela(`tela${item.dataset.target.charAt(0).toUpperCase() + item.dataset.target.slice(1)}`);
+                    document.getElementById('menuMobile').classList.add('hidden');
+                });
+            });
+
+            // Botões cabeçalho
+            document.getElementById('btnDashboard').addEventListener('click', () => mostrarTela('telaDashboard'));
+            document.getElementById('btnNovaAuditoria').addEventListener('click', () => mostrarTela('telaNovaAuditoria'));
+            document.getElementById('btnRelatorios').addEventListener('click', () => mostrarTela('telaRelatorios'));
+        }
+
+
+        function mostrarTela(nomeTela) {
+            // Esconder todas
+            document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
+            // Mostrar selecionada
+            document.getElementById(nomeTela).classList.remove('hidden');
+            
+            if(nomeTela === 'telaDashboard') atualizarDashboard();
+            if(nomeTela === 'telaPlanoAcao') gerarPlanoAcaoVisual();
+        }
+
+
+        function iniciarChecklist(e) {
+            e.preventDefault();
+            
+            auditoriaAtual.unidade = document.getElementById('unidadeNome').value;
+            auditoriaAtual.data = document.getElementById('auditoriaData').value;
+            auditoriaAtual.auditor = document.getElementById('auditorNome').value;
+            auditoriaAtual.tipo = document.getElementById('auditoriaTipo').value;
+            auditoriaAtual.status = "Em andamento";
+            auditoriaAtual.respostas = {};
+            auditoriaAtual.planoAcao = [];
+            
+            document.getElementById('tituloAuditoria').textContent = `Checklist: ${auditoriaAtual.unidade}`;
+            
+            mostrarTela('telaChecklist');
+            carregarEixo('CCIB');
+        }
+
+
+        function carregarEixo(nomeEixo) {
+            // Atualizar abas
+            document.querySelectorAll('.eixo-tab').forEach(t => {
+                t.classList.remove('active', 'text-primary', 'border-primary');
+                t.classList.add('text-gray-600', 'hover:bg-gray-50');
+            });
+            if(event && event.target) {
+                event.target.classList.add('active', 'text-primary', 'border-primary');
+                event.target.classList.remove('text-gray-600', 'hover:bg-gray-50');
+            }
+
+            const itens = checklistEixos[nomeEixo];
+            const conteudo = document.getElementById('conteudoEixo');
+            conteudo.innerHTML = '';
+
+            itens.forEach(item => {
+                const resposta = auditoriaAtual.respostas[item.id] || {};
+                
+                const itemEl = document.createElement('div');
+                itemEl.className = 'p-4 mb-4 bg-gray-50 rounded-lg border border-gray-200';
+                itemEl.innerHTML = `
+                    <div class="mb-3 font-medium">${item.id}. ${item.requisito}</div>
+                    <div class="flex flex-wrap gap-2 mb-2">
+                        <button class="btn-option btn-conforme ${resposta.classificacao === 'C' ? 'btn-option-active bg-conforme/10 border-conforme' : 'bg-white border-gray-200'}" 
+                                data-id="${item.id}" data-classif="C">
+                            Conforme <span class="font-bold">(1,0)</span>
+                        </button>
+                        <button class="btn-option btn-parcial ${resposta.classificacao === 'PC' ? 'btn-option-active bg-parcial/10 border-parcial' : 'bg-white border-gray-200'}" 
+                                data-id="${item.id}" data-classif="PC">
+                            Parcial <span class="font-bold">(0,5)</span>
+                        </button>
+                        <button class="btn-option btn-naoconforme ${resposta.classificacao === 'NC' ? 'btn-option-active bg-naoconforme/10 border-naoconforme' : 'bg-white border-gray-200'}" 
+                                data-id="${item.id}" data-classif="NC">
+                            Não Conforme <span class="font-bold">(0,0)</span>
+                        </button>
+                    </div>
+                    ${resposta.observacao ? `<div class="text-sm text-gray-600 italic mt-2 bg-white p-2 rounded">Observação: ${resposta.observacao}</div>` : ''}
+                `;
+
+                // Adicionar eventos aos botões
+                itemEl.querySelectorAll('.btn-option').forEach(btn => {
+                    btn.addEventListener('click', () => selecionarClassificacao(item.id, btn.dataset.classif, item.requisito));
+                });
+
+                conteudo.appendChild(itemEl);
+            });
+
+            calcularPontuacaoEixo(nomeEixo);
+        }
+
+
+        function selecionarClassificacao(idItem, classificacao, requisito) {
+            const respostaAnterior = auditoriaAtual.respostas[idItem];
+            
+            auditoriaAtual.respostas[idItem] = {
+                classificacao: classificacao,
+                pontuacao: classificacao === 'C' ? 1 : classificacao === 'PC' ? 0.5 : 0,
+                observacao: respostaAnterior?.observacao || '',
+                requisito: requisito
+            };
+
+            // Se for PC ou NC, pedir observação
+            if(classificacao !== 'C') {
+                itemAtualParaObservacao = idItem;
+                document.getElementById('modalObservacao').classList.remove('hidden');
+                document.getElementById('modalObservacao').classList.add('flex');
+                document.getElementById('textoObservacao').value = respostaAnterior?.observacao || '';
+            }
+
+            // Recarregar eixo para atualizar visual
+            const eixoAtivo = document.querySelector('.eixo-tab.active').dataset.eixo;
+            carregarEixo(eixoAtivo);
+        }
+
+
+        function salvarObservacao() {
+            const texto = document.getElementById('textoObservacao').value.trim();
+            
+            if(!texto) {
+                alert('A observação é obrigatória para esta classificação!');
+                return;
+            }
+
+            if(itemAtualParaObservacao && auditoriaAtual.respostas[itemAtualParaObservacao]) {
+                auditoriaAtual.respostas[itemAtualParaObservacao].observacao = texto;
+            }
+
+            fecharModal();
+            const eixoAtivo = document.querySelector('.eixo-tab.active').dataset.eixo;
+            carregarEixo(eixoAtivo);
+        }
+
+
+        function fecharModal() {
+            document.getElementById('modalObservacao').classList.add('hidden');
+            document.getElementById('modalObservacao').classList.remove('flex');
+            itemAtualParaObservacao = null;
+        }
+
+
+        function calcularPontuacaoEixo(nomeEixo) {
+            const itens = checklistEixos[nomeEixo];
+            let totalPontos = 0;
+            let pontosObtidos = 0;
+
+            itens.forEach(item => {
+                totalPontos += item.peso;
+                const resp = auditoriaAtual.respostas[item.id];
+                if(resp) pontosObtidos += resp.pontuacao;
+            });
+
+            const porcentagem = totalPontos > 0 ? Math.round((pontosObtidos / totalPontos) * 100) : 0;
+            document.getElementById('pontuacaoEixo').textContent = `${pontosObtidos} / ${totalPontos} (${porcentagem}%)`;
+        }
+
+
+        function finalizarAuditoria() {
+            // Verificar se todos os itens foram respondidos
+            let totalItens = 0;
+            let respondidos = 0;
+            
+            Object.values(checklistEixos).forEach(eixo => {
+                eixo.forEach(item => {
+                    totalItens++;
+                    if(auditoriaAtual.respostas[item.id]) respondidos++;
+                });
+            });
+
+            if(respondidos < totalItens) {
+                alert(`Ainda faltam ${totalItens - respondidos} itens sem resposta!`);
+                return;
+            }
+
+            // Calcular pontuação geral
+            let pontosTotais = 0;
+            let pontosGeral = 0;
+            Object.values(auditoriaAtual.respostas).forEach(resp => {
+                pontosTotais += 1;
+                pontosGeral += resp.pontuacao;
+            });
+            auditoriaAtual.pontuacaoGeral = Math.round((pontosGeral / pontosTotais) * 100);
+            auditoriaAtual.status = "Finalizada";
+
+            // Salvar no armazenamento local
+            salvarAuditoriaLocal();
+            
+            alert(`Auditoria finalizada! Pontuação geral: ${auditoriaAtual.pontuacaoGeral}%`);
+            mostrarTela('telaPlanoAcao');
+        }
+
+
+        function gerarPlanoAcaoVisual() {
+            const tabela = document.getElementById('tabelaPlanoAcao');
+            tabela.innerHTML = '';
+
+            let temItem = false;
+
+            Object.entries(auditoriaAtual.respostas).forEach(([id, resp]) => {
+                if(resp.classificacao === 'PC' || resp.classificacao === 'NC') {
+                    temItem = true;
+                    
+                    const tr = document.createElement('tr');
+                    tr.className = 'border-b border-gray-200 hover:bg-gray-50';
+                    
+                    // Descobrir eixo do item
+                    let eixoNome = '';
+                    Object.entries(checklistEixos).forEach(([eixo, itens]) => {
+                        if(itens.some(i => i.id == id)) eixoNome = eixo;
+                    });
+
+                    tr.innerHTML = `
+                        <td class="py-3 px-2 text-sm">${eixoNome}</td>
+                        <td class="py-3 px-2 text-sm max-w-[200px] truncate">${resp.requisito}</td>
+                        <td class="py-3 px-2 text-sm font-medium ${resp.classificacao === 'PC' ? 'text-parcial' : 'text-naoconforme'}">
+                            ${resp.classificacao === 'PC' ? 'Parcial' : 'Não Conforme'}
+                        </td>
+                        <td class="py-3 px-2 text-sm"><input type="text" class="w-full px-2 py-1 border rounded acao-correta" placeholder="Descrever ação..." data-id="${id}"></td>
+                        <td class="py-3 px-2 text-sm"><input type="text" class="w-full px-2 py-1 border rounded responsavel" placeholder="Nome..." data-id="${id}"></td>
+                        <td class="py-3 px-2 text-sm"><input type="date" class="w-full px-2 py-1 border rounded prazo" data-id="${id}"></td>
+                        <td class="py-3 px-2 text-sm">
+                            <select class="w-full px-2 py-1 border rounded status-acao" data-id="${id}">
+                                <option value="Pendente">Pendente</option>
+                                <option value="Em execução">Em execução</option>
+                                <option value="Concluída">Concluída</option>
+                            </select>
+                        </td>
+                    `;
+
+                    tabela.appendChild(tr);
+
+                    // Salvar alterações automaticamente
+                    tr.querySelectorAll('input, select').forEach(campo => {
+                        campo.addEventListener('change', () => {
+                            const acao = auditoriaAtual.planoAcao.find(a => a.idItem == id) || { idItem: id };
+                            acao.acao = tr.querySelector('.acao-correta').value;
+                            acao.responsavel = tr.querySelector('.responsavel').value;
+                            acao.prazo = tr.querySelector('.prazo').value;
+                            acao.status = tr.querySelector('.status-acao').value;
+                            
+                            const idx = auditoriaAtual.planoAcao.findIndex(a => a.idItem == id);
+                            if(idx >= 0) auditoriaAtual.planoAcao[idx] = acao;
+                            else auditoriaAtual.planoAcao.push(acao);
+                        });
+                    });
+                }
+            });
+
+            if(!temItem) {
+                tabela.innerHTML = '<tr><td colspan="7" class="py-4 px-2 text-center text-gray-500">Nenhuma não conformidade encontrada ✅</td></tr>';
+            }
+        }
+
+
+        function salvarAuditoriaLocal() {
+            let auditorias = JSON.parse(localStorage.getItem('qualiubs_auditorias') || '[]');
+            auditorias.push(auditoriaAtual);
+            localStorage.setItem('qualiubs_auditorias', JSON.stringify(auditorias));
+            atualizarFiltrosRelatorios();
+        }
+
+
+        function atualizarFiltrosRelatorios() {
+            const auditorias = JSON.parse(localStorage.getItem('qualiubs_auditorias') || '[]');
+            const selectUnidade = document.getElementById('filtroUnidade');
+            
+            // Limpar opções exceto a primeira
+            while(selectUnidade.options.length > 1) selectUnidade.remove(1);
+            
+            const unidades = [...new Set(auditorias.map(a => a.unidade))];
+            unidades.forEach(u => {
+                const opt = document.createElement('option');
+                opt.value = u;
+                opt.textContent = u;
+                selectUnidade.appendChild(opt);
+            });
+        }
+
+
+        function atualizarDashboard() {
+            const auditorias = JSON.parse(localStorage.getItem('qualiubs_auditorias') || '[]');
+            
+            // Cards superiores
+            document.getElementById('totalAuditorias').textContent = auditorias.length;
+            
+            if(auditorias.length === 0) {
+                document.getElementById('mediaGeral').textContent = '0%';
+                document.getElementById('totalPC').textContent = '0';
+                document.getElementById('totalNC').textContent = '0';
+                return;
+            }
+
+            // Cálculos gerais
+            let somaGeral = 0;
+            let pc = 0, nc = 0;
+            const porEixo = {};
+            const porUnidade = {};
+            const falhasComuns = {};
+            const evolucaoMensal = {};
+
+            auditorias.forEach(aud => {
+                somaGeral += aud.pontuacaoGeral;
+
+                // Contar classificações e falhas
+                Object.entries(aud.respostas).forEach(([id, r]) => {
+                    if(r.classificacao === 'PC') pc++;
+                    if(r.classificacao === 'NC') nc++;
+                    if(r.classificacao !== 'C') {
+                        falhasComuns[r.requisito] = (falhasComuns[r.requisito] || 0) + 1;
+                    }
+                });
+
+                // Agrupar por eixo
+                Object.entries(checklistEixos).forEach(([eixo, itens]) => {
+                    let pontosEixo = 0, totalEixo = itens.length;
+                    itens.forEach(i => {
+                        if(aud.respostas[i.id]) pontosEixo += aud.respostas[i.id].pontuacao;
+                    });
+                    const perc = Math.round((pontosEixo / totalEixo) * 100);
+                    porEixo[eixo] = porEixo[eixo] || { soma: 0, qtd: 0 };
+                    porEixo[eixo].soma += perc;
+                    porEixo[eixo].qtd += 1;
+                });
+
+                // Agrupar por unidade
+                porUnidade[aud.unidade] = porUnidade[aud.unidade] || { soma: 0, qtd: 0 };
+                porUnidade[aud.unidade].soma += aud.pontuacaoGeral;
+                porUnidade[aud.unidade].qtd += 1;
+
+                // Evolução mensal
+                const mes = aud.data.substring(0, 7
